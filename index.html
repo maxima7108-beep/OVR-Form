@@ -606,6 +606,12 @@ input,select,textarea,.in,.editor{font-size:16px!important}
 .msgbox{max-width:100%!important}
 #typer{max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .hero-in.row3{grid-template-columns:auto minmax(0,1fr) auto!important}
+/* keep content clear of the bottom navigation (iPhone home indicator) */
+body{padding-bottom:0!important}
+.main{padding-bottom:calc(130px + env(safe-area-inset-bottom))!important}
+.navbtns{margin-top:16px;margin-bottom:10px;gap:10px;flex-wrap:wrap}
+.navbtns .btn{min-height:48px;font-size:14px;white-space:normal;text-align:center;line-height:1.3}
+.navbtns>span:empty{display:none}
 </style>
 </head>
 <body>
