@@ -503,6 +503,7 @@ html[dir=rtl] .wave .w1{animation-name:waveXr}html[dir=rtl] .wave .w2{animation-
 #repOv .rd-ic{width:62px;height:62px;border-radius:50%;margin:0 auto 4px;display:grid;place-items:center;font-size:30px;color:#fff;background:linear-gradient(135deg,#059669,#13a38f)}
 #repOv .rd-box b{font-size:18px}#repOv .rd-box small{color:#64748b;direction:rtl;margin-bottom:6px;line-height:1.8}
 #repOv .rd-box button{border:0;border-radius:14px;min-height:48px;font-family:var(--font);font-size:15.5px;font-weight:700;cursor:pointer}
+#repOv .rd-hint{display:none;background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:12px;padding:10px;font-size:13px;line-height:1.7}
 #repOv .rd-share{background:linear-gradient(135deg,#0f6e8c,#13a38f);color:#fff}
 #repOv .rd-dl{background:#eef2ff;color:#3730a3}
 #repOv .rd-view{background:#f1f5f9;color:#0f172a}
@@ -1038,37 +1039,48 @@ function repWin(){
  if(!MOBILE){const w=window.open('','_blank');if(!w){toast('المتصفح منع النافذة المنبثقة — اسمح بالنوافذ المنبثقة لهذه الصفحة','err');return null}
   return {loading(){w.document.write('<html><body style="font-family:Tahoma;display:grid;place-items:center;height:90vh;color:#334155;background:#f1f5f9"><div style="text-align:center"><div style="width:46px;height:46px;border:5px solid #cbd5e1;border-top-color:#2563eb;border-radius:50%;margin:auto;animation:s 1s linear infinite"></div><h3>جاري تجهيز التقرير...</h3></div><style>@keyframes s{to{transform:rotate(360deg)}}</style></body></html>')},
    write(h){w.document.open();w.document.write(h);w.document.close()}}}
- let ov=$('#repOv');if(!ov){ov=document.createElement('div');ov.id='repOv';ov.innerHTML='<div class="rov-load"><span class="spin dk" style="width:40px;height:40px;border-width:4px"></span><b>جاري تجهيز التقرير...</b></div><div class="rov-fr"><iframe></iframe></div><div class="rov-bar"><button type="button" class="rb-close" onclick="closeRep()">✕ إغلاق</button><button type="button" class="rb-prt" onclick="printRep()">🖨 طباعة</button><button type="button" class="rb-print" onclick="makeRepPDF()">📄 حفظ PDF</button></div><div class="rov-done"><div class="rd-box"><div class="rd-ic">✓</div><b>تم إنشاء ملف PDF</b><small id="rdInfo"></small><button type="button" class="rd-share" onclick="sharePDF()">مشاركة / حفظ في الملفات</button><button type="button" class="rd-dl" onclick="dlPDF()">تنزيل الملف</button><button type="button" class="rd-view" onclick="viewPDF()">عرض الملف</button><button type="button" class="rd-x" onclick="$(&quot;#repOv&quot;).classList.remove(&quot;done&quot;)">رجوع للتقرير</button></div></div>';document.body.appendChild(ov)}
+ let ov=$('#repOv');if(!ov){ov=document.createElement('div');ov.id='repOv';ov.innerHTML='<div class="rov-load"><span class="spin dk" style="width:40px;height:40px;border-width:4px"></span><b>جاري تجهيز التقرير...</b></div><div class="rov-fr"><iframe></iframe></div><div class="rov-bar"><button type="button" class="rb-close" onclick="closeRep()">✕ إغلاق</button><button type="button" class="rb-prt" onclick="makeRepPDF(true)">🖨 طباعة</button><button type="button" class="rb-print" onclick="makeRepPDF()">📄 حفظ PDF</button></div><div class="rov-done"><div class="rd-box"><div class="rd-ic">✓</div><b>تم إنشاء ملف PDF</b><small id="rdInfo"></small><div id="rdHint" class="rd-hint">للطباعة: اضغط «عرض الملف» ثم زر المشاركة ثم «طباعة» — يُطبع بحجم الصفحة كاملة</div><button type="button" class="rd-share" onclick="sharePDF()">مشاركة / حفظ في الملفات</button><button type="button" class="rd-dl" onclick="dlPDF()">تنزيل الملف</button><button type="button" class="rd-view" onclick="viewPDF()">عرض الملف</button><button type="button" class="rd-x" onclick="$(&quot;#repOv&quot;).classList.remove(&quot;done&quot;)">رجوع للتقرير</button></div></div>';document.body.appendChild(ov)}
  const fr=$('iframe',ov);ov.classList.add('on','loading');document.body.style.overflow='hidden';
  return {loading(){},write(h){fr.onload=()=>ov.classList.remove('loading');fr.srcdoc=h}}
 }
 /* ---- build a real A4-landscape PDF from the report (sharp, full page, no browser header/URL) ---- */
 let REPPDF=null;
-function sheetToJpeg(sheet,scale){return new Promise((res,rej)=>{
+function sheetToCanvas(sheet,scale,mode){return new Promise((res,rej)=>{
  const doc=sheet.ownerDocument;const css=[...doc.querySelectorAll('style')].map(s=>s.textContent).join('\n');
  const W=Math.round(285*96/25.4),H=Math.round(198*96/25.4);
- const box=doc.createElement('div');box.setAttribute('style',`width:${W}px;height:${H}px;background:#fff;position:relative;overflow:hidden;font-family:${getComputedStyle(doc.body).fontFamily.replace(/"/g,"'")};color:#000`);
+ const k=mode==='raw'?1:scale;const SW=Math.round(W*k),SH=Math.round(H*k);
+ const box=doc.createElement('div');
+ const sc=mode==='zoom'?`zoom:${k};`:mode==='tf'?`transform:scale(${k});transform-origin:0 0;`:'';
+ box.setAttribute('style',`width:${W}px;height:${H}px;${sc}background:#fff;position:relative;overflow:hidden;font-family:${getComputedStyle(doc.body).fontFamily.replace(/"/g,"'")};color:#000`);
  const st=doc.createElement('style');st.textContent=css+'\n.sheet{margin:0!important;box-shadow:none!important;zoom:1!important}';box.appendChild(st);
  const cl=sheet.cloneNode(true);cl.style.zoom='';box.appendChild(cl);
  const xhtml=new XMLSerializer().serializeToString(box);
- const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${W*scale}" height="${H*scale}" viewBox="0 0 ${W} ${H}"><foreignObject x="0" y="0" width="${W}" height="${H}">${xhtml}</foreignObject></svg>`;
+ const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${SW}" height="${SH}"><foreignObject x="0" y="0" width="${SW}" height="${SH}">${xhtml}</foreignObject></svg>`;
  const img=new Image();img.onload=async()=>{try{
-   const c=document.createElement('canvas');c.width=W*scale;c.height=H*scale;const x=c.getContext('2d');
-   for(let k=0;k<2;k++){x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(img,0,0,c.width,c.height);await new Promise(r=>setTimeout(r,60))}
-   res(c.toDataURL('image/jpeg',.93))}catch(e){rej(e)}};
+   const c=document.createElement('canvas');c.width=Math.round(W*scale);c.height=Math.round(H*scale);const x=c.getContext('2d');x.imageSmoothingQuality='high';
+   for(let t=0;t<2;t++){x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(img,0,0,c.width,c.height);await new Promise(r=>setTimeout(r,60))}
+   res(c)}catch(e){rej(e)}};
  img.onerror=()=>rej(new Error('render'));img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg)})}
-async function makeRepPDF(){
+/* checks that the form's right border reached the right edge (i.e. the page was rendered full size) */
+function fillsPage(c){try{const x=c.getContext('2d');const w=c.width,h=c.height;const span=Math.max(6,Math.round(w*.006));
+ let hits=0;[.3,.5,.7].forEach(fy=>{const d=x.getImageData(w-span,Math.round(h*fy),span,1).data;for(let i=0;i<d.length;i+=4){if(d[i]+d[i+1]+d[i+2]<300){hits++;break}}});return hits>=2}catch(e){return true}}
+let PDFMODE=null;
+async function sheetToJpeg(sheet,scale,isForm){
+ if(PDFMODE)return (await sheetToCanvas(sheet,scale,PDFMODE)).toDataURL('image/jpeg',.93);
+ for(const m of ['zoom','tf','raw']){const c=await sheetToCanvas(sheet,scale,m);if(!isForm||fillsPage(c)||m==='raw'){if(isForm)PDFMODE=m;return c.toDataURL('image/jpeg',.93)}}
+}
+async function makeRepPDF(forPrint){
  const ov=$('#repOv'),fr=$('iframe',ov),btn=$('.rb-print',ov);if(!window.PDFLib){printRep();return}
  const doc=fr.contentDocument;const sheets=[...doc.querySelectorAll('.sheet')];if(!sheets.length)return;
  btn.disabled=true;const lbl=btn.textContent;
  try{const pdf=await PDFLib.PDFDocument.create();const mm=72/25.4;
   for(let i=0;i<sheets.length;i++){btn.textContent=`⏳ ${i+1} / ${sheets.length}`;
-   const jpg=await sheetToJpeg(sheets[i],sheets.length>6?2.4:3);const im=await pdf.embedJpg(jpg);
+   const jpg=await sheetToJpeg(sheets[i],sheets.length>6?2.4:3,i===0&&!!sheets[i].querySelector('.form'));const im=await pdf.embedJpg(jpg);
    const pg=pdf.addPage([297*mm,210*mm]);pg.drawImage(im,{x:6*mm,y:6*mm,width:285*mm,height:198*mm})}
   pdf.setTitle('OVR Form');pdf.setCreator('Lab OVR Tool');
   const bytes=await pdf.save();const nm=`OVR_${(CUR&&CUR.f&&CUR.f.evDate)||todayISO()}.pdf`;
   REPPDF={blob:new Blob([bytes],{type:'application/pdf'}),name:nm};
-  $('#rdInfo').innerHTML=`<bdi dir="ltr">${nm}</bdi><br>عدد الصفحات: ${sheets.length} · الحجم: <bdi dir="ltr">${(bytes.length/1048576).toFixed(1)} MB</bdi>`;ov.classList.add('done');
+  $('#rdInfo').innerHTML=`<bdi dir="ltr">${nm}</bdi><br>عدد الصفحات: ${sheets.length} · الحجم: <bdi dir="ltr">${(bytes.length/1048576).toFixed(1)} MB</bdi>`;ov.classList.add('done');$('#rdHint').style.display=forPrint?'block':'none';
  }catch(e){console.error(e);toast('تعذر إنشاء PDF هنا — سيتم فتح الطباعة بدلاً منه','err');printRep()}
  btn.disabled=false;btn.textContent=lbl}
 async function sharePDF(){if(!REPPDF)return;const f=new File([REPPDF.blob],REPPDF.name,{type:'application/pdf'});
