@@ -442,8 +442,19 @@ html[dir=rtl] .wave .w1{animation-name:waveXr}html[dir=rtl] .wave .w2{animation-
 .dw .cal{all:unset;cursor:pointer;margin-inline-start:auto;width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--c,#2563eb);position:relative}
 .dw .cal:hover{background:#eef2ff}
 .dw .cal svg{width:18px;height:18px}
-.dw .cal input.nat{position:absolute;inset:0;width:100%!important;height:100%!important;opacity:0;cursor:pointer;z-index:2;border:0;padding:0;margin:0;font-size:16px;-webkit-appearance:none;appearance:none;background:transparent;color:transparent}
-.dw .cal input.nat::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.dw input.nat{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;bottom:0;left:0}
+.dw .cal{cursor:pointer;-webkit-tap-highlight-color:transparent}
+.calp{max-width:380px;margin:0 auto;user-select:none}
+.calh{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+.calh select{flex:1;border:1.5px solid #dbe3ee;border-radius:10px;padding:9px 8px;font-size:16px;background:#fbfdff;font-family:var(--font)}
+.calh .cnav{all:unset;cursor:pointer;width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:#f1f5f9;font-size:20px;font-weight:800;color:#0f6e8c}
+.calh .cnav:active{background:#e2e8f0}
+.calw,.cald{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.calw span{font-size:11.5px;color:#94a3b8;font-weight:700;padding:4px 0}
+.cald button{all:unset;cursor:pointer;height:42px;border-radius:12px;display:grid;place-items:center;font-size:16px;font-weight:700;color:#0f172a;font-variant-numeric:tabular-nums;-webkit-tap-highlight-color:transparent}
+.cald button:hover{background:#f0fbfa}
+.cald button.tdy{box-shadow:inset 0 0 0 2px #13a38f;color:#0f6e8c}
+.cald button.sel{background:linear-gradient(135deg,#0f6e8c,#13a38f);color:#fff;box-shadow:0 6px 14px -6px rgba(19,163,143,.8)}
 .dw .cal{width:38px!important;height:38px!important;flex:none}
 .dw.bad{border-color:#e11d48}
 .enhrow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;min-height:24px}.enhrow .btn.sm{padding:3px 8px;font-size:11.5px}
@@ -1109,7 +1120,8 @@ function buildDateWidgets(){
  $$('#v-form input[type=date][data-k]').forEach(nat=>{if(nat.closest('.dw'))return;
   const w=document.createElement('div');w.className='dw';nat.parentNode.insertBefore(w,nat);
   w.innerHTML='<input class="dp d" inputmode="numeric" maxlength="2" placeholder="يوم"><span class="sl">/</span><input class="dp m" inputmode="numeric" maxlength="2" placeholder="شهر"><span class="sl">/</span><input class="dp y" inputmode="numeric" maxlength="4" placeholder="سنة"><span class="cal" title="اختر من التقويم"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span>';
-  nat.classList.add('nat');$('.cal',w).appendChild(nat);nat.tabIndex=-1;
+  nat.classList.add('nat');w.appendChild(nat);nat.tabIndex=-1;
+  $('.cal',w).addEventListener('click',e=>{e.preventDefault();e.stopPropagation();openCal(nat)});
   const [d,m,y]=['.d','.m','.y'].map(s=>$(s,w));
   const push=()=>{const dd=d.value.trim(),mm=m.value.trim(),yy=y.value.trim();
    if(!dd&&!mm&&!yy){w.classList.remove('bad');if(nat.value){nat.value='';nat.dispatchEvent(new Event('input',{bubbles:true}))}return}
@@ -1119,10 +1131,23 @@ function buildDateWidgets(){
   [d,m,y].forEach((inp,i,arr)=>{inp.addEventListener('input',e=>{e.stopPropagation();inp.value=inp.value.replace(/[^0-9٠-٩]/g,'').replace(/[٠-٩]/g,c=>'٠١٢٣٤٥٦٧٨٩'.indexOf(c));if(inp.value.length>=+inp.maxLength&&arr[i+1])arr[i+1].focus();push()});
    inp.addEventListener('keydown',e=>{if(e.key==='Backspace'&&!inp.value&&arr[i-1]){arr[i-1].focus()}if(e.key==='/'||e.key==='.'||e.key==='-'){e.preventDefault();if(arr[i+1])arr[i+1].focus()}});
    inp.addEventListener('blur',()=>{if(inp!==y&&inp.value.length===1)inp.value='0'+inp.value;push()})});
-  nat.addEventListener('click',e=>{try{if(nat.showPicker)nat.showPicker()}catch(err){}});
+
   nat.addEventListener('change',()=>{syncDate(nat);nat.dispatchEvent(new Event('input',{bubbles:true}))});
  });
 }
+/* ---- custom calendar (works the same on iPhone, Android and PC) ---- */
+const AR_M=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+const AR_D=['أحد','اثنين','ثلاثاء','أربعاء','خميس','جمعة','سبت'];
+let CALT=null;
+function openCal(nat){const v=nat.value;const t=new Date();const [y,m]=v?v.split('-').map(Number):[t.getFullYear(),t.getMonth()+1];CALT={nat,y,m:m-1};
+ openMod('اختر التاريخ','<div class="calp" id="calp"></div>',`<button class="btn pri" onclick="calPick(todayISO())">اليوم</button><button class="btn" onclick="calPick('')">مسح التاريخ</button><button class="btn ghost" onclick="closeMod()">إلغاء</button>`);renderCal()}
+function calNav(d){CALT.m+=d;if(CALT.m<0){CALT.m=11;CALT.y--}if(CALT.m>11){CALT.m=0;CALT.y++}renderCal()}
+function renderCal(){const {y,m,nat}=CALT;const sel=nat.value,tdy=todayISO();const first=new Date(y,m,1).getDay(),dim=new Date(y,m+1,0).getDate();const Y0=new Date().getFullYear();
+ let yrs='';for(let i=Y0+1;i>=1920;i--)yrs+=`<option value="${i}" ${i===y?'selected':''}>${i}</option>`;
+ let cells='';for(let i=0;i<first;i++)cells+='<span></span>';
+ for(let d=1;d<=dim;d++){const iso=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;cells+=`<button type="button" class="${iso===sel?'sel':''} ${iso===tdy?'tdy':''}" onclick="calPick('${iso}')">${d}</button>`}
+ $('#calp').innerHTML=`<div class="calh"><button type="button" class="cnav" onclick="calNav(-1)">→</button><select onchange="CALT.m=+this.value;renderCal()">${AR_M.map((n,i)=>`<option value="${i}" ${i===m?'selected':''}>${n}</option>`).join('')}</select><select onchange="CALT.y=+this.value;renderCal()">${yrs}</select><button type="button" class="cnav" onclick="calNav(1)">←</button></div><div class="calw">${AR_D.map(d=>`<span>${d}</span>`).join('')}</div><div class="cald">${cells}</div>`}
+function calPick(iso){const nat=CALT.nat;nat.value=iso;syncDate(nat);nat.dispatchEvent(new Event('input',{bubbles:true}));closeMod()}
 function syncDate(nat){const w=nat.closest('.dw');if(!w)return;const v=nat.value;const [y,m,d]=v?v.split('-'):['','',''];$('.d',w).value=d||'';$('.m',w).value=m||'';$('.y',w).value=y||'';w.classList.remove('bad')}
 function syncDates(){$$('#v-form .dw input.nat').forEach(syncDate)}
 
